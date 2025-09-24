@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Inter:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/tone@14.7.58/build/Tone.js"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -187,8 +188,40 @@
             const messageText = document.getElementById('messageText');
 
             let isSpinning = false;
+            let currentRotation = 0;
+            let tickIntervalId = null;
+
+            // Tone.js Synths for sound effects
+            const clickSynth = new Tone.Synth({
+                oscillator: { type: "sine" },
+                envelope: {
+                    attack: 0.005,
+                    decay: 0.1,
+                    sustain: 0.05,
+                    release: 0.2
+                }
+            }).toDestination();
             
-            // Use an object to store scores for each of the 7 teams
+            const winChimeSynth = new Tone.Synth({
+                oscillator: { type: "triangle" },
+                envelope: {
+                    attack: 0.05,
+                    decay: 0.2,
+                    sustain: 0.1,
+                    release: 0.5
+                }
+            }).toDestination();
+
+            const loseChimeSynth = new Tone.PolySynth(Tone.Synth, {
+                oscillator: { type: "sine" },
+                envelope: {
+                    attack: 0.05,
+                    decay: 0.4,
+                    sustain: 0.05,
+                    release: 0.4
+                }
+            }).toDestination();
+
             let teamScores = {
                 'Team 1': 0,
                 'Team 2': 0,
@@ -199,7 +232,6 @@
                 'Team 7': 0
             };
 
-            // Define the segments and their corresponding point values
             const segments = [
                 { points: 10,  minDegree: 0,   maxDegree: 60 },
                 { points: 25,  minDegree: 60,  maxDegree: 120 },
@@ -209,9 +241,8 @@
                 { points: -50, minDegree: 300, maxDegree: 360 }
             ];
 
-            // Function to render the team scores on the scoreboard
             function renderTeamScores() {
-                teamScoresDisplay.innerHTML = ''; // Clear existing scores
+                teamScoresDisplay.innerHTML = '';
                 for (const [team, score] of Object.entries(teamScores)) {
                     const teamScoreDiv = document.createElement('div');
                     teamScoreDiv.className = 'text-center p-2 rounded-md bg-gray-800 shadow-md';
@@ -220,7 +251,6 @@
                 }
             }
 
-            // Call once to initialize the scoreboard display
             renderTeamScores();
 
             function showMessage(text) {
@@ -231,11 +261,32 @@
                 }, 3000);
             }
 
-            spinButton.addEventListener('click', () => {
+            function startTicking(duration) {
+                let elapsedTime = 0;
+                const totalTicks = 40; // Fewer ticks for a slower start
+                const initialInterval = duration / totalTicks;
+                let currentInterval = initialInterval;
+
+                function tick() {
+                    clickSynth.triggerAttackRelease("A3", "16n");
+                    elapsedTime += currentInterval;
+
+                    if (elapsedTime < duration) {
+                        const remainingTime = duration - elapsedTime;
+                        currentInterval = initialInterval + (duration - remainingTime) / 30;
+                        tickIntervalId = setTimeout(tick, currentInterval);
+                    }
+                }
+                tick();
+            }
+
+            spinButton.addEventListener('click', async () => {
                 if (isSpinning) return;
                 isSpinning = true;
                 spinButton.disabled = true;
                 resetButton.disabled = true;
+
+                await Tone.start();
 
                 const selectedTeam = teamSelect.value;
                 if (!selectedTeam) {
@@ -245,26 +296,40 @@
                     resetButton.disabled = false;
                     return;
                 }
+                
+                startTicking(6000);
 
                 const randomDegree = Math.floor(Math.random() * 360);
-                const totalRotation = 360 * 10 + (360 - randomDegree) - 30; // 30 is to align with the arrow
+                const spinDegrees = 360 * 10 + (360 - randomDegree) - 30;
+                currentRotation += spinDegrees;
                 
                 wheelSvg.style.transition = 'transform 6s cubic-bezier(0.25, 0.1, 0.25, 1)';
-                wheelSvg.style.transform = `rotate(${totalRotation}deg)`;
+                wheelSvg.style.transform = `rotate(${currentRotation}deg)`;
 
                 setTimeout(() => {
                     isSpinning = false;
                     spinButton.disabled = false;
                     resetButton.disabled = false;
+                    clearTimeout(tickIntervalId);
 
                     const winningSegment = segments.find(seg => {
-                        return randomDegree >= seg.minDegree && randomDegree < seg.maxDegree;
+                        let normalizedDegree = (360 - (currentRotation % 360)) + 30;
+                        if (normalizedDegree >= 360) {
+                            normalizedDegree -= 360;
+                        }
+                        return normalizedDegree >= seg.minDegree && normalizedDegree < seg.maxDegree;
                     });
 
                     if (winningSegment) {
+                        if (winningSegment.points < 0) {
+                            loseChimeSynth.triggerAttackRelease(["C4", "A3", "F3"], "4n");
+                            showMessage(`${selectedTeam} lost ${Math.abs(winningSegment.points)} points!`);
+                        } else {
+                            winChimeSynth.triggerAttackRelease("E5", "8n");
+                            showMessage(`${selectedTeam} won ${winningSegment.points} points!`);
+                        }
                         teamScores[selectedTeam] += winningSegment.points;
-                        renderTeamScores(); // Update the scoreboard
-                        showMessage(`${selectedTeam} won ${winningSegment.points} points!`);
+                        renderTeamScores();
                     }
                 }, 6000);
             });
@@ -273,7 +338,7 @@
                 for (const team in teamScores) {
                     teamScores[team] = 0;
                 }
-                renderTeamScores(); // Update the display
+                renderTeamScores();
                 showMessage("All scores have been reset!");
             });
         });
