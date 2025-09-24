@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spinning Wheel</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: #111827;
+            color: #E5E7EB;
+            overflow-x: hidden;
+            padding: 1rem 0;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            width: 100%;
+            max-width: 800px;
+            padding: 1rem;
+        }
+        .scoreboard {
+            background: #374151;
+            padding: 1rem 2rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            font-family: 'Luckiest Guy', cursive;
+            text-align: center;
+            width: 100%;
+        }
+        .scoreboard h2 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+        .wheel-container {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            margin: 1rem 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #wheel-svg {
+            width: 100%;
+            height: 100%;
+            transition: transform 6s cubic-bezier(0.25, 0.1, 0.25, 1);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            border-radius: 50%;
+        }
+        .segment-text {
+            font-family: 'Luckiest Guy', cursive;
+            font-size: 0.4rem;
+            fill: #1F2937;
+            text-anchor: middle;
+            dominant-baseline: middle;
+        }
+        .arrow {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
+            border-bottom: 20px solid #F87171;
+            z-index: 10;
+        }
+        #spinButton, #resetButton {
+            background-color: #2563EB;
+            color: white;
+            padding: 1rem 2rem;
+            font-size: 1.5rem;
+            font-family: 'Luckiest Guy', cursive;
+            border-radius: 9999px;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s, background-color 0.2s;
+        }
+        #spinButton:hover, #resetButton:hover {
+            background-color: #1D4ED8;
+            transform: translateY(-2px);
+        }
+        #spinButton:disabled {
+            background-color: #6B7280;
+            cursor: not-allowed;
+        }
+        .message-box {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #1F2937;
+            color: white;
+            padding: 2rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.5);
+            z-index: 20;
+            display: none;
+            text-align: center;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col items-center justify-center p-4">
+
+    <div class="container">
+        <h1 class="text-4xl sm:text-5xl font-extrabold text-center text-yellow-400 mb-4 font-['Luckiest_Guy'] tracking-wide">
+            The Point Spinner
+        </h1>
+
+        <div class="scoreboard bg-gray-700 p-4 rounded-lg shadow-inner w-full mb-4">
+            <h2 class="text-xl sm:text-2xl text-yellow-200">Team Scores</h2>
+            <div id="teamScores" class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-2">
+                <!-- Team scores will be dynamically added here -->
+            </div>
+        </div>
+
+        <div class="w-full flex flex-col items-center gap-4 mb-8">
+            <label for="teamSelect" class="text-lg font-bold">Select Your Team:</label>
+            <select id="teamSelect" class="bg-gray-800 text-white p-2 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="Team 1">Team 1</option>
+                <option value="Team 2">Team 2</option>
+                <option value="Team 3">Team 3</option>
+                <option value="Team 4">Team 4</option>
+                <option value="Team 5">Team 5</option>
+                <option value="Team 6">Team 6</option>
+                <option value="Team 7">Team 7</option>
+            </select>
+        </div>
+        
+        <div class="wheel-container">
+            <svg id="wheel-svg" viewBox="0 0 100 100">
+                <!-- Segments -->
+                <g class="segments">
+                    <path d="M50 50 L50 0 A50 50 0 0 1 93.3 25.0 Z" fill="#FCD34D" />
+                    <path d="M50 50 L93.3 25.0 A50 50 0 0 1 93.3 75.0 Z" fill="#F87171" />
+                    <path d="M50 50 L93.3 75.0 A50 50 0 0 1 50 100.0 Z" fill="#A7F3D0" />
+                    <path d="M50 50 L50 100.0 A50 50 0 0 1 6.7 75.0 Z" fill="#818CF8" />
+                    <path d="M50 50 L6.7 75.0 A50 50 0 0 1 6.7 25.0 Z" fill="#E5E7EB" />
+                    <path d="M50 50 L6.7 25.0 A50 50 0 0 1 50 0 Z" fill="#4B5563" />
+                </g>
+                <!-- Text Labels -->
+                <g class="labels" transform="translate(50,50) rotate(30)">
+                    <text class="segment-text" x="35" y="0" transform="rotate(-30)">10 Points</text>
+                    <text class="segment-text" x="35" y="0" transform="rotate(30)">25 Points</text>
+                    <text class="segment-text" x="35" y="0" transform="rotate(90)">50 Points</text>
+                    <text class="segment-text" x="35" y="0" transform="rotate(150)">100 Points</text>
+                    <text class="segment-text" x="35" y="0" transform="rotate(210)">Lose 25</text>
+                    <text class="segment-text" x="35" y="0" transform="rotate(270)">Lose 50</text>
+                </g>
+            </svg>
+            <div class="arrow"></div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row items-center gap-4">
+            <button id="spinButton" class="px-8 py-4 font-bold rounded-full shadow-lg">Spin the Wheel!</button>
+            <button id="resetButton" class="px-8 py-4 font-bold rounded-full shadow-lg">Reset Scores</button>
+        </div>
+    </div>
+
+    <!-- Message box for user notifications -->
+    <div id="messageBox" class="message-box">
+        <p id="messageText"></p>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const wheelSvg = document.getElementById('wheel-svg');
+            const spinButton = document.getElementById('spinButton');
+            const resetButton = document.getElementById('resetButton');
+            const teamSelect = document.getElementById('teamSelect');
+            const teamScoresDisplay = document.getElementById('teamScores');
+            const messageBox = document.getElementById('messageBox');
+            const messageText = document.getElementById('messageText');
+
+            let isSpinning = false;
+            
+            // Use an object to store scores for each of the 7 teams
+            let teamScores = {
+                'Team 1': 0,
+                'Team 2': 0,
+                'Team 3': 0,
+                'Team 4': 0,
+                'Team 5': 0,
+                'Team 6': 0,
+                'Team 7': 0
+            };
+
+            // Define the segments and their corresponding point values
+            const segments = [
+                { points: 10,  minDegree: 0,   maxDegree: 60 },
+                { points: 25,  minDegree: 60,  maxDegree: 120 },
+                { points: 50,  minDegree: 120, maxDegree: 180 },
+                { points: 100, minDegree: 180, maxDegree: 240 },
+                { points: -25, minDegree: 240, maxDegree: 300 },
+                { points: -50, minDegree: 300, maxDegree: 360 }
+            ];
+
+            // Function to render the team scores on the scoreboard
+            function renderTeamScores() {
+                teamScoresDisplay.innerHTML = ''; // Clear existing scores
+                for (const [team, score] of Object.entries(teamScores)) {
+                    const teamScoreDiv = document.createElement('div');
+                    teamScoreDiv.className = 'text-center p-2 rounded-md bg-gray-800 shadow-md';
+                    teamScoreDiv.innerHTML = `<div class="text-sm text-gray-400 font-normal">${team}</div><div class="text-xl sm:text-2xl text-yellow-400">${score}</div>`;
+                    teamScoresDisplay.appendChild(teamScoreDiv);
+                }
+            }
+
+            // Call once to initialize the scoreboard display
+            renderTeamScores();
+
+            function showMessage(text) {
+                messageText.textContent = text;
+                messageBox.style.display = 'block';
+                setTimeout(() => {
+                    messageBox.style.display = 'none';
+                }, 3000);
+            }
+
+            spinButton.addEventListener('click', () => {
+                if (isSpinning) return;
+                isSpinning = true;
+                spinButton.disabled = true;
+                resetButton.disabled = true;
+
+                const selectedTeam = teamSelect.value;
+                if (!selectedTeam) {
+                    showMessage("Please select a team first!");
+                    isSpinning = false;
+                    spinButton.disabled = false;
+                    resetButton.disabled = false;
+                    return;
+                }
+
+                const randomDegree = Math.floor(Math.random() * 360);
+                const totalRotation = 360 * 10 + (360 - randomDegree) - 30; // 30 is to align with the arrow
+                
+                wheelSvg.style.transition = 'transform 6s cubic-bezier(0.25, 0.1, 0.25, 1)';
+                wheelSvg.style.transform = `rotate(${totalRotation}deg)`;
+
+                setTimeout(() => {
+                    isSpinning = false;
+                    spinButton.disabled = false;
+                    resetButton.disabled = false;
+
+                    const winningSegment = segments.find(seg => {
+                        return randomDegree >= seg.minDegree && randomDegree < seg.maxDegree;
+                    });
+
+                    if (winningSegment) {
+                        teamScores[selectedTeam] += winningSegment.points;
+                        renderTeamScores(); // Update the scoreboard
+                        showMessage(`${selectedTeam} won ${winningSegment.points} points!`);
+                    }
+                }, 6000);
+            });
+
+            resetButton.addEventListener('click', () => {
+                for (const team in teamScores) {
+                    teamScores[team] = 0;
+                }
+                renderTeamScores(); // Update the display
+                showMessage("All scores have been reset!");
+            });
+        });
+    </script>
+</body>
+</html>
